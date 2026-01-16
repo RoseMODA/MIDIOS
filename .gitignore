@@ -1,0 +1,14 @@
+# Dependencias (esta es la parte pesada)
+node_modules/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs de error
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Carpeta de compilación (si llegas a empaquetar la app)
+dist/

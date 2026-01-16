@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --accent: #28a745;
+            --bg-glass: rgba(255, 255, 255, 0.9);
+            --text-main: #333;
+            --border: rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --accent: #2ecc71;
+                --bg-glass: rgba(35, 35, 35, 0.95);
+                --text-main: #eee;
+                --border: rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        body {
+            margin: 0;
+            padding: 15px;
+            background: transparent;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .container {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            -webkit-app-region: drag;
+            position: relative;
+            height: 400px;
+            /* Altura fija para evitar que se corte */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .close-btn {
+            -webkit-app-region: no-drag;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: 0.2s;
+        }
+
+        .close-btn:hover {
+            opacity: 1;
+        }
+
+        h3 {
+            margin: 0 0 20px 0;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            -webkit-app-region: no-drag;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-main);
+            cursor: pointer;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+
+        .tab-btn.active {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab-btn.active {
+                background: #444;
+            }
+        }
+
+        .tab-content {
+            display: none;
+            -webkit-app-region: no-drag;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* FORM ELEMENTS */
+        input,
+        textarea,
+        select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.02);
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        #previewText {
+            background: rgba(0, 0, 0, 0.03);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-style: italic;
+            min-height: 80px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ffbd2e;
+        }
+
+        button.main-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            background: #2b2b2b;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            button.main-btn {
+                background: #eee;
+                color: #222;
+            }
+        }
+
+        button.main-btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        .save-btn {
+            background: var(--accent) !important;
+            color: white !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="close-btn" onclick="window.close()">✕</div>
+        <h3>Cita Personalizada</h3>
+
+        <div class="tabs">
+            <div class="tab-btn active" onclick="openTab(event, 'tab-list')">Mis Citas</div>
+            <div class="tab-btn" onclick="openTab(event, 'tab-new')">Crear Nueva</div>
+        </div>
+
+        <div id="tab-list" class="tab-content active">
+            <select id="customSelect">
+                <option>Cargando...</option>
+            </select>
+            <div id="previewText">Selecciona una cita para ver la previa...</div>
+            <button class="main-btn" id="confirmBtn">Cargar Cita</button>
+        </div>
+
+        <div id="tab-new" class="tab-content">
+            <input id="manualRef" placeholder="Referencia (ej: Salmo 23:1)">
+            <textarea id="manualText" placeholder="Escribe el mensaje de fe aquí..." rows="4"></textarea>
+            <button class="main-btn save-btn" id="saveBtn">Guardar en mi Biblia</button>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        // Función para cambiar entre pestañas
+        function openTab(evt, tabName) {
+            const contents = document.getElementsByClassName("tab-content");
+            for (let content of contents) content.classList.remove("active");
+
+            const btns = document.getElementsByClassName("tab-btn");
+            for (let btn of btns) btn.classList.remove("active");
+
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        async function load() {
+            try {
+                const res = await fetch('bible.json');
+                const data = await res.json();
+                const quotes = Array.isArray(data) ? data : [data];
+
+                const select = document.getElementById('customSelect');
+                select.innerHTML = '<option value="">— Seleccionar Referencia —</option>';
+
+                quotes.forEach((q, index) => {
+                    select.innerHTML += `<option value="${index}">${q.reference}</option>`;
+                });
+
+                select.onchange = () => {
+                    const selected = quotes[select.value];
+                    document.getElementById('previewText').innerText = selected ? selected.text : "Selecciona una cita...";
+                };
+
+                document.getElementById('confirmBtn').onclick = () => {
+                    const selected = quotes[select.value];
+                    if (selected) {
+                        ipcRenderer.send('custom-selected', selected);
+                        window.close();
+                    }
+                };
+            } catch (e) {
+                console.error("Error cargando bible.json", e);
+            }
+        }
+
+        document.getElementById('saveBtn').onclick = () => {
+            const newQuote = {
+                reference: document.getElementById('manualRef').value,
+                text: document.getElementById('manualText').value
+            };
+
+            if (newQuote.reference && newQuote.text) {
+                ipcRenderer.send('save-and-use-custom', newQuote);
+                window.close();
+            } else {
+                alert("Completa ambos campos antes de guardar.");
+            }
+        };
+
+        load();
+    </script>
+</body>
+
+</html>

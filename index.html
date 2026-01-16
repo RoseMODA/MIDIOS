@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>MiDios</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: transparent;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            -webkit-user-select: none;
+            /* Añadimos esto para que el body no ocupe todo el ancho por defecto */
+            width: fit-content;
+            height: fit-content;
+            overflow: hidden;
+        }
+
+        .card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(14px);
+            border-radius: 18px;
+            padding: 18px 20px 24px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+            -webkit-app-region: drag;
+            /* Toda la tarjeta es arrastrable */
+
+            /* Importante: definimos un ancho máximo para que no se estire infinito 
+       pero dejamos que el alto sea automático */
+            width: 350px;
+            /* Un ancho base fijo pero cómodo */
+            height: auto;
+            /* Que crezca según el texto */
+            overflow: hidden;
+            /* Evita barras de scroll internas */
+            display: inline-block;
+            /* Ayuda a medir el tamaño real */
+        }
+
+        /* IMPORTANTE: Deshabilitar el drag en elementos interactivos */
+        .controls,
+        .menu,
+        .menu-btn,
+        #quote,
+        .modal {
+            -webkit-app-region: no-drag;
+        }
+
+
+
+        /* Header draggable */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            -webkit-app-region: drag;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0.75;
+        }
+
+        .btn:hover {
+            opacity: 1;
+        }
+
+        .close {
+            background: #ff5f57;
+        }
+
+        .pin {
+            background: #ffbd2e;
+        }
+
+        #quote {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #2b2b2b;
+            text-align: center;
+            padding: 10px;
+        }
+
+        #quote strong {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        /* Botón menú */
+        /* El botón de hamburguesa lo podemos dejar igual o moverlo un poco */
+        .menu-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 14px;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+            z-index: 10;
+            /* Asegurar que esté arriba */
+        }
+
+        .menu-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Menú desplegable */
+        .menu {
+            position: absolute;
+            /* Volvemos a absolute para que flote sobre el texto */
+            bottom: 45px;
+            /* Lo posicionamos ARRIBA del botón de menú */
+            right: 14px;
+            width: 180px;
+            /* Ancho fijo para que sea elegante */
+            display: none;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 12px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+            /* Sombra hacia arriba */
+            z-index: 100;
+        }
+
+        .menu.open {
+            display: block;
+        }
+
+        .menu-item {
+            padding: 6px 12px;
+            /* Más compacto */
+            font-size: 13px;
+            /* Letra más chica */
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-item:hover {
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        /* Animaciones */
+        .fade-out {
+            opacity: 0;
+            transition: opacity .2s;
+        }
+
+        .fade-in {
+            opacity: 1;
+            transition: opacity .3s;
+        }
+
+        .verse-text {
+            font-size: 17px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .verse-ref {
+            font-size: 12px;
+            opacity: .7;
+        }
+
+        /* Modo oscuro */
+        body.dark .card {
+            background: rgba(30, 30, 30, 0.85);
+            color: #eee;
+        }
+
+        body.dark .menu,
+        body.dark .modal-content {
+            background: rgba(40, 40, 40, 0.95);
+            color: #eee;
+        }
+
+        body.dark {
+            color: #eee;
+        }
+
+        body.dark .verse-text {
+            color: #f2f2f2;
+        }
+
+        body.dark .verse-ref {
+            color: #b5b5b5;
+        }
+
+        body.dark .menu-item {
+            color: #eee;
+        }
+
+        body.dark input,
+        body.dark textarea,
+        body.dark select {
+            background: #2b2b2b;
+            color: #eee;
+            border: 1px solid #444;
+        }
+
+
+        /* Modales */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 14px;
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .modal-content input,
+        .modal-content textarea {
+            padding: 6px;
+            border-radius: 6px;
+        }
+
+        #timer-display {
+            color: #2b2b2b;
+            transition: transform 0.1s;
+        }
+
+        #timer-display:active {
+            transform: scale(0.95);
+        }
+
+        body.dark #timer-display {
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <!-- MODAL BUSCAR -->
+        <div class="modal" id="searchModal">
+            <div class="modal-content">
+                <h3>Buscar verso</h3>
+                <input id="bookInput" placeholder="Libro (ej: Salmos)">
+                <input id="chapterInput" placeholder="Capítulo">
+                <input id="verseInput" placeholder="Verso">
+                <button id="searchConfirm">Aceptar</button>
+                <button class="modal-close">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- MODAL CITA PERSONALIZADA -->
+        <div class="modal" id="customModal">
+            <div class="modal-content">
+                <h3>Cita personalizada</h3>
+                <input id="customRef" placeholder="Referencia">
+                <textarea id="customText" placeholder="Texto"></textarea>
+                <button>Aceptar</button>
+                <button class="modal-close">Cancelar</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <div class="controls">
+                <div class="btn close" id="closeBtn" title="Cerrar"></div>
+                <div class="btn pin" id="pinBtn" title="Fijar / liberar ventana"></div>
+            </div>
+        </div>
+        <div id="timer-container"
+            style="display: none; text-align: center; margin-bottom: 10px; -webkit-app-region: no-drag;">
+            <span id="timer-display"
+                style="font-size: 24px; font-weight: bold; cursor: pointer; letter-spacing: 2px;">00:00:00</span>
+            <span id="close-timer" style="margin-left: 10px; cursor: pointer; opacity: 0.5; font-size: 14px;">✕</span>
+        </div>
+
+        <div id="quote">
+            Cargando cita...
+        </div>
+
+        <!-- Menú -->
+        <div class="menu" id="menu">
+            <div class="menu-item" id="startCron">Crono</div>
+            <div class="menu-item" id="startTemp">15 m</div>
+
+            <div class="menu-item" id="randomVerse">Otro verso</div>
+            <div class="menu-item" id="searchVerse">Buscar verso</div>
+            <div class="menu-item" id="customQuote">Cita personalizada</div>
+            <div class="menu-item" id="toggleTheme">Modo claro / oscuro</div>
+
+        </div>
+
+
+        <div class="menu-btn" id="menuBtn" title="Opciones">☰</div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>

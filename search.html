@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            padding: 15px;
+            background: transparent;
+            /* Electron permite ver el fondo de la ventana */
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        h3 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #111;
+        }
+
+        select,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        button {
+            background: #2b2b2b;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            border: none;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        #preview,
+        #previewText {
+            background: rgba(0, 0, 0, 0.03);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 15px;
+            border-left: 3px solid #ffbd2e;
+            color: #444;
+        }
+
+        /* Soporte para Modo Oscuro si lo necesitas */
+        @media (prefers-color-scheme: dark) {
+            .container {
+                background: rgba(30, 30, 30, 0.9);
+                color: #eee;
+                -webkit-app-region: drag;
+                /* Permite mover la ventana emergente */
+                position: relative;
+            }
+
+            h3 {
+                color: #fff;
+            }
+
+            select {
+                background: #444;
+                color: #eee;
+                border-color: #555;
+            }
+
+            button {
+                background: #eee;
+                color: #222;
+            }
+
+            #preview {
+                color: #bbb;
+                background: rgba(255, 255, 255, 0.05);
+            }
+        }
+
+        select,
+        button,
+        .modal-close {
+            -webkit-app-region: no-drag;
+            /* Los botones no deben ser arrastrables */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div style="-webkit-app-region: no-drag; position: absolute; top: 10px; right: 15px; cursor: pointer; font-weight: bold; color: #888;"
+            onclick="window.close()">
+            ✕
+        </div>
+        <h3>Buscar en la Biblia</h3>
+        <select id="bookSelect">
+            <option>Cargando libros...</option>
+        </select>
+        <select id="chapterSelect" disabled>
+            <option>Capítulo</option>
+        </select>
+        <select id="verseSelect" disabled>
+            <option>Versículo</option>
+        </select>
+
+        <div id="preview">Selecciona un verso para ver la previa...</div>
+
+        <button id="sendBtn">Cargar en ventana principal</button>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        let bibleData = [];
+
+        async function init() {
+            const res = await fetch('SpanishBLPHBible.json');
+            const data = await res.json();
+            bibleData = data.verses;
+
+            const bookSelect = document.getElementById('bookSelect');
+            const books = [...new Set(bibleData.map(v => v.book_name))];
+
+            bookSelect.innerHTML = '<option value="">Selecciona Libro</option>';
+            books.forEach(b => bookSelect.innerHTML += `<option value="${b}">${b}</option>`);
+
+            bookSelect.onchange = () => updateChapters();
+        }
+
+        function updateChapters() {
+            const book = document.getElementById('bookSelect').value;
+            const chapters = [...new Set(bibleData.filter(v => v.book_name === book).map(v => v.chapter))];
+            const chSelect = document.getElementById('chapterSelect');
+            chSelect.disabled = false;
+            chSelect.innerHTML = '<option value="">Capítulo</option>';
+            chapters.forEach(c => chSelect.innerHTML += `<option value="${c}">${c}</option>`);
+            chSelect.onchange = () => updateVerses();
+        }
+
+        function updateVerses() {
+            const book = document.getElementById('bookSelect').value;
+            const chapter = document.getElementById('chapterSelect').value;
+            const verses = bibleData.filter(v => v.book_name === book && v.chapter == chapter);
+            const vSelect = document.getElementById('verseSelect');
+            vSelect.disabled = false;
+            vSelect.innerHTML = '<option value="">Versículo</option>';
+            verses.forEach(v => vSelect.innerHTML += `<option value="${v.verse}">${v.verse}</option>`);
+            vSelect.onchange = showPreview;
+        }
+
+        function showPreview() {
+            const book = document.getElementById('bookSelect').value;
+            const chapter = document.getElementById('chapterSelect').value;
+            const verse = document.getElementById('verseSelect').value;
+            const found = bibleData.find(v => v.book_name === book && v.chapter == chapter && v.verse == verse);
+            if (found) document.getElementById('preview').innerText = found.text;
+        }
+
+        document.getElementById('sendBtn').onclick = () => {
+            const book = document.getElementById('bookSelect').value;
+            const chapter = document.getElementById('chapterSelect').value;
+            const verse = document.getElementById('verseSelect').value;
+            // Enviamos al Main para que este le avise a la ventana principal
+            ipcRenderer.send('verse-selected', { book, chapter, verse });
+            window.close();
+        };
+
+        init();
+    </script>
+</body>
+
+</html>
