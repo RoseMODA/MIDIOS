@@ -241,21 +241,42 @@ function updateDisplay(totalSeconds) {
 function startLogic() {
     if (isTimerRunning) {
         clearInterval(timerInterval);
+        // Opcional: pausar el sonido de la alarma si se detiene manualmente
+        alarmSound.pause();
+        alarmSound.currentTime = 0;
     } else {
         timerInterval = setInterval(() => {
             if (currentMode === 'cron') {
                 secondsElapsed++;
+                
+                // Suena cada vez que se completa un minuto exacto (60, 120, 180...)
+                if (secondsElapsed > 0 && secondsElapsed % 60 === 0) {
+                    tickSound.play().catch(() => {});
+                }
+                
             } else {
                 secondsElapsed--;
+
+                // Lógica del Temporizador:
+                // 1. Sonido cada minuto (si quedan más de 60 segundos)
+                if (secondsElapsed > 60 && secondsElapsed % 60 === 0) {
+                    tickSound.play().catch(() => {});
+                }
+
+                // 2. Alarma en los últimos 16 segundos
+                if (secondsElapsed <= 16 && secondsElapsed > 0) {
+                    alarmSound.play().catch(() => {});
+                }
+
+                // 3. Finalización (Sin alert)
                 if (secondsElapsed <= 0) {
                     clearInterval(timerInterval);
                     isTimerRunning = false;
-                    alarmSound.play();
-                    alert("¡Tiempo terminado!");
+                    // Aseguramos que suene al llegar a cero una última vez o se mantenga
+                    alarmSound.play().catch(() => {});
                 }
             }
             updateDisplay(secondsElapsed);
-            tickSound.play().catch(() => {}); // El catch evita error si no hay archivo
         }, 1000);
     }
     isTimerRunning = !isTimerRunning;
